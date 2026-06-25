@@ -82,7 +82,7 @@ async function downloadAll() {
       await downloadWeb();
     }
   } catch (e) {
-    statusMsg.value = `下载失败: ${(e as Error).message}`;
+    statusMsg.value = `下载失败: ${e instanceof Error ? e.message : String(e)}`;
   } finally {
     downloading.value = false;
   }

@@ -6,7 +6,12 @@
     "core:default",
     "core:app:default",
     "core:app:allow-set-app-theme",
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "**" }]
+    },
     "fs:default",
+    "fs:allow-exists",
     "dialog:default",
     "shell:allow-open"
   ]
