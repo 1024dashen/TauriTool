@@ -6,6 +6,8 @@
     "core:default",
     "core:app:default",
     "core:app:allow-set-app-theme",
+    "fs:default",
+    "dialog:default",
     "shell:allow-open"
   ]
 }
