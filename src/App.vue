@@ -155,6 +155,10 @@ function navigate(path: string) {
   --color-warn-bg: #fff9e6;
   --color-warn-border: #f0e0a0;
   --color-warn-text: #7a6a00;
+  /* 滚动条 */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #c0c0c0;
+  --scrollbar-thumb-hover: #a0a0a0;
 }
 
 /* 深色主题 - One Dark Pro */
@@ -184,15 +188,37 @@ function navigate(path: string) {
   --color-warn-bg: #332d1a;
   --color-warn-border: #4a4220;
   --color-warn-text: #e5c07b;
+  /* 滚动条 */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #4b5263;
+  --scrollbar-thumb-hover: #5c6370;
 }
 
 html,
 body,
 #app {
-  height: 100%;
+  /* height: 100%; */
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--color-text);
   background: var(--color-bg);
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 </style>
 
