@@ -526,6 +526,91 @@ function addSize() {
 function removeSize(s: number) {
   exportSizes.value = exportSizes.value.filter((x) => x !== s);
 }
+
+/* ==================== ICNS 导出 ==================== */
+
+/** 尺寸对应的 ICNS OSType（macOS 标准） */
+const ICNS_TYPES: Record<number, string> = {
+  16: "icp4", 32: "icp5", 64: "icp6",
+  128: "ic07", 256: "ic08", 512: "ic09",
+  1024: "ic10",
+};
+
+/** 将字符串编码为 4 字节 ASCII */
+function encodeOSType(s: string): Uint8Array {
+  return new Uint8Array([s.charCodeAt(0), s.charCodeAt(1), s.charCodeAt(2), s.charCodeAt(3)]);
+}
+
+/** 将 uint32 编码为大端序 4 字节 */
+function encodeUint32BE(n: number): Uint8Array {
+  return new Uint8Array([(n >> 24) & 0xff, (n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff]);
+}
+
+/** 拼接多个 Uint8Array */
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const total = arrays.reduce((sum, a) => sum + a.length, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrays) {
+    result.set(a, offset);
+    offset += a.length;
+  }
+  return result;
+}
+
+/**
+ * 构建 ICNS 二进制文件
+ * 格式：magic(4) + filesize(4) + [type(4) + entrysize(4) + pngdata(n)]...
+ */
+function buildICNS(icons: { size: number; png: Uint8Array }[]): Uint8Array {
+  const entries: Uint8Array[] = [];
+  for (const { size, png } of icons) {
+    const ostype = ICNS_TYPES[size];
+    if (!ostype) continue;
+    const entryLen = 8 + png.length;
+    entries.push(concatBytes(encodeOSType(ostype), encodeUint32BE(entryLen), png));
+  }
+  const body = concatBytes(...entries);
+  const fileLen = 8 + body.length;
+  return concatBytes(encodeOSType("icns"), encodeUint32BE(fileLen), body);
+}
+
+/** 生成 ICNS 并下载 */
+async function downloadICNS() {
+  if (!imgEl.value) { statusMsg.value = "请先上传图片"; return; }
+  downloading.value = true; statusMsg.value = "";
+  try {
+    // 使用所有标准 ICNS 尺寸（与导出尺寸取交集）
+    const icnsSizes = [16, 32, 64, 128, 256, 512, 1024];
+    const icons: { size: number; png: Uint8Array }[] = [];
+    for (const size of icnsSizes) {
+      const c = document.createElement("canvas");
+      c.width = size; c.height = size;
+      await renderToCanvas(c, size);
+      const blob = await new Promise<Blob>((r) => c.toBlob((b) => r(b!), "image/png"));
+      icons.push({ size, png: new Uint8Array(await blob.arrayBuffer()) });
+    }
+    const icnsData = buildICNS(icons);
+    if (isTauri()) {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const { writeFile } = await import("@tauri-apps/plugin-fs");
+      const dir = await open({ directory: true, title: "选择保存位置" });
+      if (!dir) { statusMsg.value = "已取消"; return; }
+      const sep = dir.endsWith("/") || dir.endsWith("\\") ? "" : "/";
+      await writeFile(`${dir}${sep}logo.icns`, icnsData);
+      statusMsg.value = `已保存 ICNS 到: ${dir}`;
+    } else {
+      const blob = new Blob([icnsData.buffer.slice(0) as ArrayBuffer], { type: "image/x-icns" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "logo.icns"; a.click();
+      URL.revokeObjectURL(url);
+      statusMsg.value = "已下载 logo.icns";
+    }
+  } catch (e) {
+    statusMsg.value = `ICNS 导出失败: ${e instanceof Error ? e.message : String(e)}`;
+  } finally { downloading.value = false; }
+}
 </script>
 
 <template>
@@ -754,7 +839,14 @@ function removeSize(s: number) {
             :disabled="downloading"
             @click="downloadAll"
           >
-            {{ downloading ? "导出中..." : "下载所有尺寸" }}
+            {{ downloading ? "导出中..." : "下载 PNG" }}
+          </button>
+          <button
+            class="btn btn-primary"
+            :disabled="downloading"
+            @click="downloadICNS"
+          >
+            {{ downloading ? "导出中..." : "下载 ICNS" }}
           </button>
         </div>
       </div>
