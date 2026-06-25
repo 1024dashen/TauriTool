@@ -337,6 +337,12 @@ function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v));
 }
 
+/** 计算滑块填充百分比 CSS 变量 */
+function rangeStyle(val: number, min: number, max: number) {
+  const pct = ((val - min) / (max - min)) * 100;
+  return { "--range-pct": `${pct}%` } as Record<string, string>;
+}
+
 /* ==================== 滚轮事件监听（支持 preventDefault） ==================== */
 function attachWheelListener() {
   nextTick(() => {
@@ -619,6 +625,7 @@ function removeSize(s: number) {
             max="5"
             step="0.05"
             class="range"
+            :style="rangeStyle(imgScale, 0.1, 5)"
             @input="onScaleInput"
           />
           <button
@@ -646,6 +653,7 @@ function removeSize(s: number) {
             max="359"
             step="1"
             class="range"
+            :style="rangeStyle(imgRotation, 0, 359)"
             @input="onRotationInput"
           />
           <button class="btn btn-ghost btn-xs" @click="rotateRight">
@@ -664,6 +672,7 @@ function removeSize(s: number) {
             max="100"
             step="1"
             class="range"
+            :style="rangeStyle(cropW, 10, 100)"
             @input="onCropSizeInput"
           />
           <span class="range-val">{{ cropW.toFixed(0) }}%</span>
@@ -679,6 +688,7 @@ function removeSize(s: number) {
             max="100"
             step="1"
             class="range"
+            :style="rangeStyle(radiusPercent, 0, 100)"
             @input="updatePreview"
           />
           <span class="range-val">{{ radiusPercent }}%</span>
@@ -894,10 +904,76 @@ function removeSize(s: number) {
   min-width: 56px;
   flex-shrink: 0;
 }
+/* ===== 滑块 ===== */
 .range {
+  -webkit-appearance: none;
+  appearance: none;
   flex: 1;
   min-width: 100px;
-  accent-color: var(--color-primary);
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+/* Webkit 轨道 */
+.range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--color-primary) 0%,
+    var(--color-primary) var(--range-pct, 50%),
+    var(--color-border) var(--range-pct, 50%),
+    var(--color-border) 100%
+  );
+}
+/* Webkit 拇指 */
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  margin-top: -5px;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.4);
+}
+.range::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+/* Firefox 轨道 */
+.range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  border: none;
+}
+/* Firefox 填充 */
+.range::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-primary);
+}
+/* Firefox 拇指 */
+.range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
 }
 .range-val {
   font-size: 13px;
