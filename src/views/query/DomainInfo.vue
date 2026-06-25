@@ -80,6 +80,7 @@ function lookup() {
   font-size: 14px;
   outline: none;
   background: var(--color-card);
+  color: var(--color-text);
   transition: border-color 0.2s;
 }
 .input:focus {

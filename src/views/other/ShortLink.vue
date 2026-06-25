@@ -79,6 +79,7 @@ async function copyShort() {
   font-size: 14px;
   outline: none;
   background: var(--color-card);
+  color: var(--color-text);
   transition: border-color 0.2s;
 }
 .input:focus {
@@ -101,11 +102,11 @@ async function copyShort() {
   opacity: 0.9;
 }
 .btn-secondary {
-  background: #e8e8f0;
+  background: var(--color-btn-secondary);
   color: var(--color-text);
 }
 .btn-secondary:hover {
-  background: #d8d8e8;
+  background: var(--color-btn-secondary-hover);
 }
 .result-area {
   display: flex;
@@ -117,7 +118,7 @@ async function copyShort() {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #f0f2ff;
+  background: var(--color-highlight-blue);
   padding: 12px 16px;
   border-radius: var(--radius);
 }
@@ -128,11 +129,11 @@ async function copyShort() {
   color: var(--color-primary);
 }
 .hint-box {
-  background: #fff9e6;
-  border: 1px solid #f0e0a0;
+  background: var(--color-warn-bg);
+  border: 1px solid var(--color-warn-border);
   border-radius: var(--radius);
   padding: 14px 18px;
   font-size: 13px;
-  color: #7a6a00;
+  color: var(--color-warn-text);
 }
 </style>

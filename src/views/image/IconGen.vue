@@ -100,6 +100,7 @@ function previewStyle(size: number): Record<string, string> {
   font-size: 14px;
   outline: none;
   background: var(--color-card);
+  color: var(--color-text);
 }
 .color-picker {
   width: 36px;

@@ -162,6 +162,7 @@ function logoStyle(): Record<string, string> {
   font-size: 14px;
   outline: none;
   background: var(--color-card);
+  color: var(--color-text);
 }
 .range {
   width: 120px;

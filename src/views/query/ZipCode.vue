@@ -76,6 +76,7 @@ function search() {
   font-size: 14px;
   outline: none;
   background: var(--color-card);
+  color: var(--color-text);
   transition: border-color 0.2s;
 }
 .input:focus {
@@ -107,7 +108,7 @@ function search() {
   display: grid;
   grid-template-columns: 120px 1fr;
   padding: 12px 16px;
-  background: #f0f2f5;
+  background: var(--color-table-header);
   font-weight: 600;
   font-size: 13px;
 }
@@ -120,7 +121,7 @@ function search() {
   align-items: center;
 }
 .code-tag {
-  background: #e8e0ff;
+  background: var(--color-tag-bg);
   color: var(--color-primary);
   padding: 2px 8px;
   border-radius: 4px;

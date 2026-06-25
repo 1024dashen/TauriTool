@@ -117,11 +117,11 @@ function clear() {
   opacity: 0.9;
 }
 .btn-secondary {
-  background: #e8e8f0;
+  background: var(--color-btn-secondary);
   color: var(--color-text);
 }
 .btn-secondary:hover {
-  background: #d8d8e8;
+  background: var(--color-btn-secondary-hover);
 }
 .btn-outline {
   background: transparent;
@@ -135,8 +135,8 @@ function clear() {
 
 .error-msg {
   padding: 10px 14px;
-  background: #ffe8e8;
-  color: #c0392b;
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
   border-radius: var(--radius);
   font-size: 13px;
 }
@@ -180,6 +180,6 @@ function clear() {
   border-color: var(--color-primary);
 }
 .editor-textarea.output {
-  background: #fafbff;
+  background: var(--color-highlight);
 }
 </style>
