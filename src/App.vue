@@ -157,33 +157,33 @@ function navigate(path: string) {
   --color-warn-text: #7a6a00;
 }
 
-/* 深色主题 */
+/* 深色主题 - One Dark Pro */
 [data-theme="dark"] {
-  --color-primary: #7c6cf0;
-  --color-bg: #121220;
-  --color-card: #1e1e32;
-  --color-text: #e0e0e8;
-  --color-text-light: #8888a0;
-  --color-border: #2e2e48;
-  --color-sidebar: #0e0e1a;
-  --color-sidebar-hover: #1a1a30;
-  --color-sidebar-active: #2a2a48;
-  --color-sidebar-text: #ffffff;
-  --color-sidebar-text-secondary: rgba(255, 255, 255, 0.5);
-  --color-sidebar-border: rgba(255, 255, 255, 0.1);
-  --color-sidebar-toggle: rgba(255, 255, 255, 0.1);
-  --color-sidebar-toggle-hover: rgba(255, 255, 255, 0.2);
-  --color-btn-secondary: #2a2a44;
-  --color-btn-secondary-hover: #3a3a58;
-  --color-table-header: #1a1a2e;
-  --color-tag-bg: #2e2a50;
-  --color-error-bg: #3a1a1a;
-  --color-error-text: #ff6b6b;
-  --color-highlight: #1a1a30;
-  --color-highlight-blue: #1a1a38;
-  --color-warn-bg: #2a2610;
+  --color-primary: #61afef;
+  --color-bg: #282c34;
+  --color-card: #2c313a;
+  --color-text: #abb2bf;
+  --color-text-light: #5c6370;
+  --color-border: #3e4451;
+  --color-sidebar: #21252b;
+  --color-sidebar-hover: #2c313a;
+  --color-sidebar-active: #323842;
+  --color-sidebar-text: #abb2bf;
+  --color-sidebar-text-secondary: #5c6370;
+  --color-sidebar-border: #181a1f;
+  --color-sidebar-toggle: #323842;
+  --color-sidebar-toggle-hover: #3e4451;
+  --color-btn-secondary: #323842;
+  --color-btn-secondary-hover: #3e4451;
+  --color-table-header: #21252b;
+  --color-tag-bg: #2a2240;
+  --color-error-bg: #3a2020;
+  --color-error-text: #e06c75;
+  --color-highlight: #2c313a;
+  --color-highlight-blue: #252b35;
+  --color-warn-bg: #332d1a;
   --color-warn-border: #4a4220;
-  --color-warn-text: #d4c470;
+  --color-warn-text: #e5c07b;
 }
 
 html,
