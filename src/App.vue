@@ -28,7 +28,7 @@ const menuGroups = ref([
     icon: "🖼️",
     children: [
       { label: "图标生成", path: "/image/icon-gen" },
-      { label: "Logo 美化", path: "/image/logo-beautify" },
+      { label: "Logo美化", path: "/image/logo-beautify" },
     ],
   },
   {

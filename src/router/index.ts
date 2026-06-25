@@ -43,7 +43,7 @@ const routes: RouteRecordRaw[] = [
     path: "/image/logo-beautify",
     name: "LogoBeautify",
     component: () => import("../views/image/LogoBeautify.vue"),
-    meta: { title: "Logo 美化", category: "图片工具" },
+    meta: { title: "Logo美化", category: "图片工具" },
   },
   // 设备工具
   {
