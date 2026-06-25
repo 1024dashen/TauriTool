@@ -1,54 +1,64 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from "vue";
+import { ref, computed, nextTick, watch } from "vue";
 import { isTauri } from "@tauri-apps/api/core";
 
 /* ==================== 图片上传 ==================== */
 const imgSrc = ref("");
 const naturalW = ref(0);
 const naturalH = ref(0);
+const imgEl = ref<HTMLImageElement | null>(null);
 
-/* ==================== 裁剪参数（百分比 0-100） ==================== */
+/* ==================== 变换参数 ==================== */
+const imgScale = ref(1); // 缩放倍率（相对适配尺寸）
+const imgRotation = ref(0); // 旋转角度（0-360）
+const imgOffsetX = ref(0); // 平移 X（编辑器像素）
+const imgOffsetY = ref(0); // 平移 Y（编辑器像素）
+
+/* ==================== 裁剪参数（百分比 0-100，相对于旋转后显示尺寸） ==================== */
 const cropX = ref(0);
 const cropY = ref(0);
 const cropW = ref(100);
 const cropH = ref(100);
 
 /* ==================== 圆角参数 ==================== */
-/** 0–50 表示圆角占边长的百分比 */
 const radiusPercent = ref(0);
-/** 是否启用苹果 squircle 连续曲线 */
 const useAppleSquircle = ref(false);
 
 /* ==================== UI 状态 ==================== */
 const statusMsg = ref("");
 const fileInput = ref<HTMLInputElement | null>(null);
-/** 导出尺寸列表 */
 const exportSizes = ref([64, 128, 256, 512, 1024]);
 const downloading = ref(false);
 
-/* ==================== 交互拖拽状态 ==================== */
-const imgWrapRef = ref<HTMLElement | null>(null);
-const isDragging = ref(false);
-const dragType = ref<"move" | "nw" | "ne" | "sw" | "se" | "new" | "">("");
-const dragStart = ref({ mx: 0, my: 0, x: 0, y: 0, w: 0, h: 0 });
+/* ==================== 编辑器 ==================== */
+const editorCanvas = ref<HTMLCanvasElement | null>(null);
+const editorSize = 420;
+const previewCanvas = ref<HTMLCanvasElement | null>(null);
+const PREVIEW_SIZE = 256;
 
-/* ==================== 显示尺寸（保持图片适应容器） ==================== */
-const displayW = computed(() => {
-  if (!naturalW.value || !naturalH.value) return 320;
-  const maxW = 480,
-    maxH = 400;
-  const ratio = Math.min(maxW / naturalW.value, maxH / naturalH.value, 1);
-  return Math.round(naturalW.value * ratio);
+/** 旋转后的原始尺寸（宽/高可能互换） */
+const rotatedW = computed(() => {
+  const rad = (imgRotation.value * Math.PI) / 180;
+  return Math.round(
+    Math.abs(naturalW.value * Math.cos(rad)) +
+      Math.abs(naturalH.value * Math.sin(rad)),
+  );
 });
-const displayH = computed(() => {
-  if (!naturalW.value || !naturalH.value) return 320;
-  const maxW = 480,
-    maxH = 400;
-  const ratio = Math.min(maxW / naturalW.value, maxH / naturalH.value, 1);
-  return Math.round(naturalH.value * ratio);
+const rotatedH = computed(() => {
+  const rad = (imgRotation.value * Math.PI) / 180;
+  return Math.round(
+    Math.abs(naturalW.value * Math.sin(rad)) +
+      Math.abs(naturalH.value * Math.cos(rad)),
+  );
 });
 
-/* 裁剪框 CSS 定位样式 */
+/** 适配编辑器的缩放倍率（zoom=1 时图片刚好填满编辑器） */
+const fitScale = computed(() => {
+  const maxDim = Math.max(rotatedW.value, rotatedH.value);
+  return maxDim > 0 ? editorSize / maxDim : 1;
+});
+
+/* 裁剪框 CSS 定位 */
 const cropBoxStyle = computed(() => ({
   left: `${cropX.value}%`,
   top: `${cropY.value}%`,
@@ -89,174 +99,225 @@ function loadFile(file: File) {
   const reader = new FileReader();
   reader.onload = (ev) => {
     imgSrc.value = ev.target?.result as string;
-    nextTick(() => {
-      const img = new Image();
-      img.onload = () => {
-        naturalW.value = img.width;
-        naturalH.value = img.height;
-        resetCrop();
-        statusMsg.value = "";
-        updatePreview();
-      };
-      img.src = imgSrc.value;
-    });
+    const img = new Image();
+    img.onload = () => {
+      naturalW.value = img.width;
+      naturalH.value = img.height;
+      imgEl.value = img;
+      fitView();
+      resetCrop();
+      statusMsg.value = "";
+      attachWheelListener();
+      drawEditor();
+      updatePreview();
+    };
+    img.src = imgSrc.value;
   };
   reader.readAsDataURL(file);
 }
 
-/** 重置裁剪为最大居中正方形 */
+/* ==================== 视图控制 ==================== */
+function fitView() {
+  imgScale.value = 1;
+  imgOffsetX.value = 0;
+  imgOffsetY.value = 0;
+}
+
 function resetCrop() {
-  const aspect = naturalW.value / naturalH.value;
-  if (aspect >= 1) {
-    // 图片更宽：正方形以高度为基准
-    cropH.value = 100;
-    cropW.value = (1 / aspect) * 100;
-    cropX.value = (100 - cropW.value) / 2;
-    cropY.value = 0;
-  } else {
-    // 图片更高：正方形以宽度为基准
-    cropW.value = 100;
-    cropH.value = aspect * 100;
-    cropX.value = 0;
-    cropY.value = (100 - cropH.value) / 2;
-  }
+  cropX.value = 0;
+  cropY.value = 0;
+  cropW.value = 100;
+  cropH.value = 100;
 }
 
-/* ==================== 鼠标交互：裁剪框拖拽/缩放 ==================== */
-function onOverlayMouseDown(e: MouseEvent) {
-  const wrap = imgWrapRef.value;
-  if (!wrap) return;
-  const rect = wrap.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  const bx = (cropX.value / 100) * rect.width;
-  const by = (cropY.value / 100) * rect.height;
-  const bw = (cropW.value / 100) * rect.width;
-  const bh = (cropH.value / 100) * rect.height;
-
-  const corner = detectCorner(mx, my, bx, by, bw, bh);
-  if (corner) {
-    isDragging.value = true;
-    dragType.value = corner;
-  } else if (isInsideBox(mx, my, bx, by, bw, bh)) {
-    isDragging.value = true;
-    dragType.value = "move";
-  } else {
-    // 点击外部：从点击处新建正方形选区
-    isDragging.value = true;
-    dragType.value = "new";
-    const pctX = (mx / rect.width) * 100;
-    const pctY = (my / rect.height) * 100;
-    cropX.value = pctX;
-    cropY.value = pctY;
-    cropW.value = 1;
-    cropH.value = (naturalW.value / naturalH.value) * 1; // 保持正方形像素比
-  }
-  dragStart.value = {
-    mx,
-    my,
-    x: cropX.value,
-    y: cropY.value,
-    w: cropW.value,
-    h: cropH.value,
-  };
-  window.addEventListener("mousemove", onOverlayMouseMove);
-  window.addEventListener("mouseup", onOverlayMouseUp);
+function rotateLeft() {
+  imgRotation.value = (imgRotation.value + 270) % 360;
+  fitView();
+  drawEditor();
+  updatePreview();
 }
-
-function onOverlayMouseMove(e: MouseEvent) {
-  const wrap = imgWrapRef.value;
-  if (!wrap || !isDragging.value) return;
-  const rect = wrap.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const dxPx = mx - dragStart.value.mx;
-  const dyPx = my - dragStart.value.my;
-  const s = dragStart.value;
-  const MIN_SQ = 20; // 最小正方形边长（原始像素）
-  /** 显示像素 → 百分比 转换系数 */
-  const pw = 100 / rect.width;
-  const ph = 100 / rect.height;
-  /** 1 显示像素对应的原始像素数 */
-  const origPerDispW = naturalW.value / rect.width;
-  const origPerDispH = naturalH.value / rect.height;
-
-  if (dragType.value === "move") {
-    const dxPct = dxPx * pw;
-    const dyPct = dyPx * ph;
-    cropX.value = clamp(s.x + dxPct, 0, 100 - s.w);
-    cropY.value = clamp(s.y + dyPct, 0, 100 - s.h);
-  } else if (dragType.value === "new") {
-    // 取较大轴偏移，转换为原始像素正方形
-    const sqDispPx = Math.max(Math.abs(dxPx), Math.abs(dyPx));
-    let sqOrigPx = Math.round(sqDispPx * origPerDispW); // 用宽轴换算
-    sqOrigPx = clamp(
-      sqOrigPx,
-      MIN_SQ,
-      Math.min(naturalW.value, naturalH.value),
-    );
-    const newWPct = (sqOrigPx / naturalW.value) * 100;
-    const newHPct = (sqOrigPx / naturalH.value) * 100;
-    cropX.value = clamp(dxPx >= 0 ? s.x : s.x - newWPct, 0, 100 - newWPct);
-    cropY.value = clamp(dyPx >= 0 ? s.y : s.y - newHPct, 0, 100 - newHPct);
-    cropW.value = newWPct;
-    cropH.value = newHPct;
-  } else {
-    // 角落缩放：在原始像素空间维持正方形
-    const sWOrig = (s.w / 100) * naturalW.value;
-    const sHOrig = (s.h / 100) * naturalH.value;
-    const dwOrig = dxPx * origPerDispW;
-    const dhOrig = dyPx * origPerDispH;
-    let sqOrigPx: number;
-    let newOrigX = (s.x / 100) * naturalW.value;
-    let newOrigY = (s.y / 100) * naturalH.value;
-
-    if (dragType.value === "se") {
-      sqOrigPx = clamp(
-        Math.max(dwOrig, dhOrig),
-        MIN_SQ,
-        Math.min(naturalW.value - newOrigX, naturalH.value - newOrigY),
-      );
-    } else if (dragType.value === "sw") {
-      sqOrigPx = clamp(
-        Math.max(-dwOrig, dhOrig),
-        MIN_SQ,
-        Math.min(newOrigX + sWOrig, naturalH.value - newOrigY),
-      );
-      newOrigX = newOrigX + sWOrig - sqOrigPx;
-    } else if (dragType.value === "ne") {
-      sqOrigPx = clamp(
-        Math.max(dwOrig, -dhOrig),
-        MIN_SQ,
-        Math.min(naturalW.value - newOrigX, newOrigY + sHOrig),
-      );
-      newOrigY = newOrigY + sHOrig - sqOrigPx;
-    } else {
-      // nw
-      sqOrigPx = clamp(
-        Math.max(-dwOrig, -dhOrig),
-        MIN_SQ,
-        Math.min(newOrigX + sWOrig, newOrigY + sHOrig),
-      );
-      newOrigX = newOrigX + sWOrig - sqOrigPx;
-      newOrigY = newOrigY + sHOrig - sqOrigPx;
-    }
-    cropW.value = (sqOrigPx / naturalW.value) * 100;
-    cropH.value = (sqOrigPx / naturalH.value) * 100;
-    cropX.value = (newOrigX / naturalW.value) * 100;
-    cropY.value = (newOrigY / naturalH.value) * 100;
-  }
+function rotateRight() {
+  imgRotation.value = (imgRotation.value + 90) % 360;
+  fitView();
+  drawEditor();
+  updatePreview();
 }
-
-function onOverlayMouseUp() {
-  isDragging.value = false;
-  window.removeEventListener("mousemove", onOverlayMouseMove);
-  window.removeEventListener("mouseup", onOverlayMouseUp);
+function onRotationInput() {
+  drawEditor();
+  updatePreview();
+}
+function onScaleInput() {
+  drawEditor();
+  updatePreview();
+}
+function onFitClick() {
+  fitView();
+  drawEditor();
   updatePreview();
 }
 
-const TH = 10;
+/** 滚轮缩放 */
+function onWheel(e: WheelEvent) {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.92 : 1.08;
+  imgScale.value = clamp(imgScale.value * factor, 0.1, 10);
+  drawEditor();
+  updatePreview();
+}
+
+/* ==================== 编辑器 Canvas 绘制 ==================== */
+function drawEditor() {
+  const canvas = editorCanvas.value;
+  if (!canvas || !imgEl.value) return;
+  const ctx = canvas.getContext("2d")!;
+  const S = editorSize;
+  ctx.clearRect(0, 0, S, S);
+
+  // 棋盘格背景
+  const ts = 10;
+  for (let y = 0; y < S; y += ts) {
+    for (let x = 0; x < S; x += ts) {
+      ctx.fillStyle =
+        (Math.floor(x / ts) + Math.floor(y / ts)) % 2 === 0
+          ? "#e8e8e8"
+          : "#fff";
+      ctx.fillRect(x, y, ts, ts);
+    }
+  }
+
+  // 绘制带变换的图片
+  ctx.save();
+  ctx.translate(S / 2 + imgOffsetX.value, S / 2 + imgOffsetY.value);
+  ctx.rotate((imgRotation.value * Math.PI) / 180);
+  const sc = fitScale.value * imgScale.value;
+  ctx.scale(sc, sc);
+  ctx.drawImage(imgEl.value, -naturalW.value / 2, -naturalH.value / 2);
+  ctx.restore();
+
+  // 裁剪遮罩（半透明黑色）
+  const cx = (cropX.value / 100) * S;
+  const cy = (cropY.value / 100) * S;
+  const cw = (cropW.value / 100) * S;
+  const ch = (cropH.value / 100) * S;
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  // 上方
+  ctx.fillRect(0, 0, S, cy);
+  // 下方
+  ctx.fillRect(0, cy + ch, S, S - cy - ch);
+  // 左方
+  ctx.fillRect(0, cy, cx, ch);
+  // 右方
+  ctx.fillRect(cx + cw, cy, S - cx - cw, ch);
+
+  // 裁剪框边框
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cx, cy, cw, ch);
+
+  // 裁剪框内参考线（三分线）
+  ctx.strokeStyle = "rgba(255,255,255,0.3)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(cx + (cw / 3) * i, cy);
+    ctx.lineTo(cx + (cw / 3) * i, cy + ch);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + (ch / 3) * i);
+    ctx.lineTo(cx + cw, cy + (ch / 3) * i);
+    ctx.stroke();
+  }
+
+  // 四角手柄
+  const hs = 8;
+  ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "var(--color-primary, #6c5ce7)";
+  ctx.lineWidth = 1.5;
+  for (const [hx, hy] of [
+    [cx, cy],
+    [cx + cw, cy],
+    [cx, cy + ch],
+    [cx + cw, cy + ch],
+  ]) {
+    ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
+    ctx.strokeRect(hx - hs / 2, hy - hs / 2, hs, hs);
+  }
+}
+
+/* ==================== 鼠标交互：角柄=裁剪缩放，其余=平移图片 ==================== */
+const isDragging = ref(false);
+const dragType = ref<"pan" | "nw" | "ne" | "sw" | "se" | "">("");
+const dragStart = ref({ mx: 0, my: 0, w: 0, h: 0, ox: 0, oy: 0 });
+
+function editorMouseDown(e: MouseEvent) {
+  const S = editorSize;
+  const mx = e.offsetX,
+    my = e.offsetY;
+  const bx = (cropX.value / 100) * S,
+    by = (cropY.value / 100) * S;
+  const bw = (cropW.value / 100) * S,
+    bh = (cropH.value / 100) * S;
+
+  // 仅角柄触发裁剪缩放，其余全部平移图片
+  const corner = detectCorner(mx, my, bx, by, bw, bh);
+  dragType.value = corner || "pan";
+  isDragging.value = true;
+  dragStart.value = {
+    mx,
+    my,
+    w: cropW.value,
+    h: cropH.value,
+    ox: imgOffsetX.value,
+    oy: imgOffsetY.value,
+  };
+  window.addEventListener("mousemove", editorMouseMove);
+  window.addEventListener("mouseup", editorMouseUp);
+}
+
+function editorMouseMove(e: MouseEvent) {
+  if (!isDragging.value) return;
+  const canvas = editorCanvas.value;
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left,
+    my = e.clientY - rect.top;
+  const dxPx = mx - dragStart.value.mx,
+    dyPx = my - dragStart.value.my;
+  const s = dragStart.value;
+  const S = editorSize;
+
+  if (dragType.value === "pan") {
+    // 平移图片（任意位置拖拽均可）
+    imgOffsetX.value = s.ox + dxPx;
+    imgOffsetY.value = s.oy + dyPx;
+  } else {
+    // 角柄缩放裁剪（始终居中，等比缩放）
+    const distFromCenter = Math.max(Math.abs(mx - S / 2), Math.abs(my - S / 2));
+    const newPct = clamp(((distFromCenter * 2) / S) * 100, 10, 100);
+    cropW.value = newPct;
+    cropH.value = newPct;
+    cropX.value = (100 - newPct) / 2;
+    cropY.value = (100 - newPct) / 2;
+  }
+  drawEditor();
+}
+
+function editorMouseUp() {
+  isDragging.value = false;
+  window.removeEventListener("mousemove", editorMouseMove);
+  window.removeEventListener("mouseup", editorMouseUp);
+  updatePreview();
+}
+
+/** 裁剪尺寸滑块（居中缩放） */
+function onCropSizeInput() {
+  cropX.value = (100 - cropW.value) / 2;
+  cropY.value = (100 - cropH.value) / 2;
+  drawEditor();
+  updatePreview();
+}
+
+const TH = 14;
 function detectCorner(
   mx: number,
   my: number,
@@ -272,64 +333,55 @@ function detectCorner(
     return "se";
   return null;
 }
-function isInsideBox(
-  mx: number,
-  my: number,
-  bx: number,
-  by: number,
-  bw: number,
-  bh: number,
-) {
-  return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
-}
 function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v));
 }
 
+/* ==================== 滚轮事件监听（支持 preventDefault） ==================== */
+function attachWheelListener() {
+  nextTick(() => {
+    editorCanvas.value?.addEventListener("wheel", onWheel, { passive: false });
+  });
+}
+watch(imgSrc, (newVal, oldVal) => {
+  if (!newVal && editorCanvas.value) {
+    editorCanvas.value.removeEventListener("wheel", onWheel);
+  }
+});
+
 /* ==================== Canvas 渲染核心 ==================== */
 
-/** 裁剪区域像素坐标（始终正方形，w === h） */
+/** 裁剪区域像素坐标（旋转后坐标系，始终正方形） */
 function getCropPixels() {
-  const x = Math.round((cropX.value / 100) * naturalW.value);
-  const y = Math.round((cropY.value / 100) * naturalH.value);
-  // 宽度与高度取较小值确保不超出图像边界
   const side = Math.max(
     Math.min(
-      Math.round((cropW.value / 100) * naturalW.value),
-      Math.round((cropH.value / 100) * naturalH.value),
+      Math.round((cropW.value / 100) * editorSize),
+      Math.round((cropH.value / 100) * editorSize),
     ),
     1,
   );
-  return { x, y, w: side, h: side };
+  const x = Math.round((cropX.value / 100) * editorSize);
+  const y = Math.round((cropY.value / 100) * editorSize);
+  return { x, y, side };
 }
 
-/**
- * 绘制苹果 squircle（连续曲率圆角）路径
- * Apple 图标使用 superellipse，此处用三阶贝塞尔近似
- * controlOffset 使曲线在角部更"饱满"，模拟 iOS 图标外观
- */
+/** 绘制苹果 squircle（连续曲率圆角）路径 */
 function drawSquirclePath(
   ctx: CanvasRenderingContext2D,
   size: number,
   cornerR: number,
 ) {
-  const s = size;
-  const r = Math.min(cornerR, s / 2);
-  // 苹果风格控制点偏移量（越大曲线越方）
-  const c = r * 0.92;
-
+  const s = size,
+    r = Math.min(cornerR, s / 2),
+    c = r * 0.92;
   ctx.beginPath();
   ctx.moveTo(r, 0);
-  // 上边 → 右上圆角
   ctx.lineTo(s - r, 0);
   ctx.bezierCurveTo(s - r + c, 0, s, r - c, s, r);
-  // 右边 → 右下圆角
   ctx.lineTo(s, s - r);
   ctx.bezierCurveTo(s, s - r + c, s - r + c, s, s - r, s);
-  // 下边 → 左下圆角
   ctx.lineTo(r, s);
   ctx.bezierCurveTo(r - c, s, 0, s - r + c, 0, s - r);
-  // 左边 → 左上圆角
   ctx.lineTo(0, r);
   ctx.bezierCurveTo(0, r - c, r - c, 0, r, 0);
   ctx.closePath();
@@ -356,53 +408,43 @@ function drawRoundedRectPath(
   ctx.closePath();
 }
 
-/**
- * 在指定 Canvas 上渲染最终效果图
- * @param canvas 目标 Canvas（尺寸需预先设置）
- * @param size   输出像素边长（正方形）
- */
+/** 渲染最终效果图（裁剪 + 变换 + 圆角/squircle） */
 async function renderToCanvas(canvas: HTMLCanvasElement, size: number) {
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, size, size);
+  if (!imgEl.value) return;
 
   const crop = getCropPixels();
-  const img = await loadImage(imgSrc.value);
-
-  // 计算圆角像素值
   const rPx = (radiusPercent.value / 100) * (size / 2);
 
   ctx.save();
-  // 应用形状裁剪
+  // 形状裁剪
   if (useAppleSquircle.value) {
-    const squircleR = Math.max(rPx, size * 0.18);
-    drawSquirclePath(ctx, size, squircleR);
+    drawSquirclePath(ctx, size, Math.max(rPx, size * 0.18));
   } else if (radiusPercent.value > 0) {
     drawRoundedRectPath(ctx, size, rPx);
   } else {
     ctx.rect(0, 0, size, size);
   }
   ctx.clip();
-  // 绘制图片（裁剪区域映射到整个 Canvas）
-  ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, size, size);
+
+  // 计算编辑器坐标 → 输出 Canvas 的映射
+  const S = editorSize;
+  const sc = fitScale.value * imgScale.value;
+  const cx = S / 2 + imgOffsetX.value - crop.x;
+  const cy = S / 2 + imgOffsetY.value - crop.y;
+  const k = size / crop.side;
+
+  ctx.translate(cx * k, cy * k);
+  ctx.rotate((imgRotation.value * Math.PI) / 180);
+  ctx.scale(sc * k, sc * k);
+  ctx.drawImage(imgEl.value, -naturalW.value / 2, -naturalH.value / 2);
   ctx.restore();
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
-/* ==================== 实时预览更新 ==================== */
-const previewCanvas = ref<HTMLCanvasElement | null>(null);
-const PREVIEW_SIZE = 256;
-
+/* ==================== 实时预览 ==================== */
 async function updatePreview() {
-  if (!previewCanvas.value || !imgSrc.value || !naturalW.value) return;
+  if (!previewCanvas.value || !imgEl.value) return;
   previewCanvas.value.width = PREVIEW_SIZE;
   previewCanvas.value.height = PREVIEW_SIZE;
   await renderToCanvas(previewCanvas.value, PREVIEW_SIZE);
@@ -410,7 +452,7 @@ async function updatePreview() {
 
 /* ==================== 导出下载 ==================== */
 async function downloadAll() {
-  if (!imgSrc.value || !naturalW.value) {
+  if (!imgEl.value) {
     statusMsg.value = "请先上传图片";
     return;
   }
@@ -481,7 +523,6 @@ function removeSize(s: number) {
 
 <template>
   <div class="tool-page">
-    <!-- 隐藏的文件输入 -->
     <input
       ref="fileInput"
       type="file"
@@ -490,7 +531,7 @@ function removeSize(s: number) {
       @change="handleFile"
     />
 
-    <!-- ====== 上传区域 ====== -->
+    <!-- 上传区域 -->
     <div
       v-if="!imgSrc"
       class="upload-area"
@@ -504,13 +545,16 @@ function removeSize(s: number) {
     </div>
 
     <template v-else>
-      <!-- ====== 主内容：裁剪 + 预览 ====== -->
+      <!-- 主内容：编辑器 + 预览 -->
       <div class="main-row">
-        <!-- 图片裁剪区 -->
+        <!-- 图片编辑器 -->
         <div class="section">
           <div class="section-header">
-            <h3 class="section-title">图片裁剪</h3>
+            <h3 class="section-title">图片编辑</h3>
             <div class="section-actions">
+              <button class="btn btn-ghost btn-sm" @click="onFitClick">
+                适配
+              </button>
               <button class="btn btn-ghost btn-sm" @click="resetCrop">
                 重置裁剪
               </button>
@@ -519,45 +563,21 @@ function removeSize(s: number) {
               </button>
             </div>
           </div>
-          <div
-            ref="imgWrapRef"
-            class="img-wrap"
-            :style="{ width: displayW + 'px', height: displayH + 'px' }"
-            @mousedown="onOverlayMouseDown"
-          >
-            <img :src="imgSrc" class="crop-img" draggable="false" />
-            <!-- SVG 半透明遮罩 -->
-            <svg
-              class="crop-svg"
-              :viewBox="`0 0 ${displayW} ${displayH}`"
-              preserveAspectRatio="none"
-            >
-              <path
-                :d="`M0 0 H${displayW} V${displayH} H0 Z M${(cropX / 100) * displayW} ${(cropY / 100) * displayH} H${((cropX + cropW) / 100) * displayW} V${((cropY + cropH) / 100) * displayH} H${(cropX / 100) * displayW} Z`"
-                fill="rgba(0,0,0,0.55)"
-                fill-rule="evenodd"
-                pointer-events="none"
-              />
-            </svg>
-            <!-- 裁剪框 -->
-            <div class="crop-box" :style="cropBoxStyle">
-              <div class="corner corner-nw" />
-              <div class="corner corner-ne" />
-              <div class="corner corner-sw" />
-              <div class="corner corner-se" />
-            </div>
+
+          <div class="editor-container">
+            <canvas
+              ref="editorCanvas"
+              :width="editorSize"
+              :height="editorSize"
+              class="editor-canvas"
+              @mousedown="editorMouseDown"
+            />
           </div>
-          <div class="crop-info">
-            原图 {{ naturalW }}×{{ naturalH }} &nbsp;·&nbsp; 裁剪
-            {{
-              Math.round(
-                Math.min((cropW / 100) * naturalW, (cropH / 100) * naturalH),
-              )
-            }}×{{
-              Math.round(
-                Math.min((cropW / 100) * naturalW, (cropH / 100) * naturalH),
-              )
-            }}
+
+          <div class="editor-info">
+            原图 {{ naturalW }}×{{ naturalH }} &nbsp;·&nbsp; 缩放
+            {{ (imgScale * 100).toFixed(0) }}% &nbsp;·&nbsp; 旋转
+            {{ imgRotation }}°
           </div>
         </div>
 
@@ -571,26 +591,84 @@ function removeSize(s: number) {
             <span>{{
               useAppleSquircle ? "苹果图标形状" : `圆角 ${radiusPercent}%`
             }}</span>
-            <span
-              >{{
-                Math.round(
-                  Math.min((cropW / 100) * naturalW, (cropH / 100) * naturalH),
-                )
-              }}×{{
-                Math.round(
-                  Math.min((cropW / 100) * naturalW, (cropH / 100) * naturalH),
-                )
-              }}</span
-            >
           </div>
         </div>
       </div>
 
-      <!-- ====== 控制面板 ====== -->
+      <!-- 控制面板 -->
       <div class="control-panel">
-        <!-- 圆角滑块 -->
+        <!-- 缩放 -->
         <div class="control-row full">
-          <label>圆角大小</label>
+          <label>缩放</label>
+          <button
+            class="btn btn-ghost btn-xs"
+            @click="
+              imgScale = clamp(imgScale - 0.1, 0.1, 10);
+              onScaleInput();
+            "
+          >
+            −
+          </button>
+          <input
+            type="range"
+            v-model.number="imgScale"
+            min="0.1"
+            max="5"
+            step="0.05"
+            class="range"
+            @input="onScaleInput"
+          />
+          <button
+            class="btn btn-ghost btn-xs"
+            @click="
+              imgScale = clamp(imgScale + 0.1, 0.1, 10);
+              onScaleInput();
+            "
+          >
+            +
+          </button>
+          <span class="range-val">{{ (imgScale * 100).toFixed(0) }}%</span>
+        </div>
+
+        <!-- 旋转 -->
+        <div class="control-row full">
+          <label>旋转</label>
+          <button class="btn btn-ghost btn-xs" @click="rotateLeft">
+            ↺ 90°
+          </button>
+          <input
+            type="range"
+            v-model.number="imgRotation"
+            min="0"
+            max="359"
+            step="1"
+            class="range"
+            @input="onRotationInput"
+          />
+          <button class="btn btn-ghost btn-xs" @click="rotateRight">
+            ↻ 90°
+          </button>
+          <span class="range-val">{{ imgRotation }}°</span>
+        </div>
+
+        <!-- 裁剪尺寸 -->
+        <div class="control-row full">
+          <label>裁剪</label>
+          <input
+            type="range"
+            v-model.number="cropW"
+            min="10"
+            max="100"
+            step="1"
+            class="range"
+            @input="onCropSizeInput"
+          />
+          <span class="range-val">{{ cropW.toFixed(0) }}%</span>
+        </div>
+
+        <!-- 圆角 -->
+        <div class="control-row full">
+          <label>圆角</label>
           <input
             type="range"
             v-model.number="radiusPercent"
@@ -603,9 +681,9 @@ function removeSize(s: number) {
           <span class="range-val">{{ radiusPercent }}%</span>
         </div>
 
-        <!-- 预设按钮 -->
+        <!-- 圆角预设 + Apple -->
         <div class="control-row">
-          <label>圆角预设</label>
+          <label>预设</label>
           <div class="preset-group">
             <button
               v-for="p in presets"
@@ -655,7 +733,7 @@ function removeSize(s: number) {
           </div>
         </div>
 
-        <!-- 下载按钮 -->
+        <!-- 下载 -->
         <div class="control-row">
           <button
             class="btn btn-primary"
@@ -667,7 +745,6 @@ function removeSize(s: number) {
         </div>
       </div>
 
-      <!-- 状态消息 -->
       <div v-if="statusMsg" class="status-msg">{{ statusMsg }}</div>
     </template>
   </div>
@@ -744,68 +821,21 @@ function removeSize(s: number) {
   color: var(--color-text);
 }
 
-/* ===== 裁剪区 ===== */
-.img-wrap {
-  position: relative;
-  overflow: hidden;
+/* ===== 编辑器 ===== */
+.editor-container {
+  display: flex;
+  justify-content: center;
+}
+.editor-canvas {
   border-radius: 4px;
   cursor: crosshair;
   user-select: none;
-  flex-shrink: 0;
-  margin: 0 auto;
   touch-action: none;
+  max-width: 100%;
+  height: auto;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
-.crop-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.crop-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.crop-box {
-  position: absolute;
-  border: 2px solid #fff;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.5),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.2);
-  cursor: move;
-  box-sizing: border-box;
-}
-.corner {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: #fff;
-  border: 1px solid var(--color-primary);
-  border-radius: 2px;
-}
-.corner-nw {
-  top: -5px;
-  left: -5px;
-  cursor: nwse-resize;
-}
-.corner-ne {
-  top: -5px;
-  right: -5px;
-  cursor: nesw-resize;
-}
-.corner-sw {
-  bottom: -5px;
-  left: -5px;
-  cursor: nesw-resize;
-}
-.corner-se {
-  bottom: -5px;
-  right: -5px;
-  cursor: nwse-resize;
-}
-.crop-info {
+.editor-info {
   font-size: 12px;
   color: var(--color-text-light);
   text-align: center;
@@ -857,21 +887,20 @@ function removeSize(s: number) {
 .control-row label {
   font-size: 13px;
   color: var(--color-text-light);
-  min-width: 64px;
+  min-width: 56px;
   flex-shrink: 0;
 }
 .range {
   flex: 1;
-  min-width: 120px;
+  min-width: 100px;
   accent-color: var(--color-primary);
 }
 .range-val {
   font-size: 13px;
   color: var(--color-text-light);
-  min-width: 32px;
+  min-width: 40px;
   text-align: right;
 }
-
 .preset-group {
   display: flex;
   gap: 6px;
@@ -888,8 +917,7 @@ function removeSize(s: number) {
   font-weight: 500;
   transition:
     opacity 0.2s,
-    background 0.2s,
-    color 0.2s;
+    background 0.2s;
 }
 .btn:disabled {
   opacity: 0.6;
@@ -913,6 +941,12 @@ function removeSize(s: number) {
 .btn-sm {
   padding: 4px 10px;
   font-size: 12px;
+}
+.btn-xs {
+  padding: 2px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 28px;
 }
 .btn-chip {
   padding: 5px 12px;
