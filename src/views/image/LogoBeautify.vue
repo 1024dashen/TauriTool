@@ -231,7 +231,7 @@ function drawEditor() {
   // 四角手柄
   const hs = 8;
   ctx.fillStyle = "#fff";
-  ctx.strokeStyle = "var(--color-primary, #6c5ce7)";
+  ctx.strokeStyle = "var(--color-primary, #0ea5e9)";
   ctx.lineWidth = 1.5;
   for (const [hx, hy] of [
     [cx, cy],
@@ -420,7 +420,8 @@ async function renderToCanvas(canvas: HTMLCanvasElement, size: number) {
   ctx.save();
   // 形状裁剪
   if (useAppleSquircle.value) {
-    drawSquirclePath(ctx, size, Math.max(rPx, size * 0.18));
+    // Apple squircle 圆角由 radiusPercent 直接控制（0% = 直角）
+    drawSquirclePath(ctx, size, rPx);
   } else if (radiusPercent.value > 0) {
     drawRoundedRectPath(ctx, size, rPx);
   } else {
@@ -589,7 +590,9 @@ function removeSize(s: number) {
           </div>
           <div class="preview-meta">
             <span>{{
-              useAppleSquircle ? "苹果图标形状" : `圆角 ${radiusPercent}%`
+              useAppleSquircle
+                ? `Apple 圆角 ${radiusPercent}%`
+                : `圆角 ${radiusPercent}%`
             }}</span>
           </div>
         </div>
@@ -673,7 +676,7 @@ function removeSize(s: number) {
             type="range"
             v-model.number="radiusPercent"
             min="0"
-            max="50"
+            max="100"
             step="1"
             class="range"
             @input="updatePreview"
@@ -704,6 +707,7 @@ function removeSize(s: number) {
               :class="['btn btn-chip btn-apple', { active: useAppleSquircle }]"
               @click="
                 useAppleSquircle = !useAppleSquircle;
+                if (useAppleSquircle && radiusPercent === 0) radiusPercent = 22;
                 updatePreview();
               "
             >

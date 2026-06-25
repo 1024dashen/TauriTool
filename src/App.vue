@@ -120,7 +120,7 @@ function navigate(path: string) {
   --sidebar-width: 220px;
   --radius: 8px;
   /* 主色调 */
-  --color-primary: #6c5ce7;
+  --color-primary: #0ea5e9;
   /* 背景与表面 */
   --color-bg: #f5f7fa;
   --color-card: #ffffff;
@@ -132,25 +132,25 @@ function navigate(path: string) {
   /* 侧边栏 */
   --color-sidebar: #ffffff;
   --color-sidebar-hover: #eef0f5;
-  --color-sidebar-active: #e4e2f0;
+  --color-sidebar-active: #e0f2fe;
   --color-sidebar-text: #2d3436;
   --color-sidebar-text-secondary: #636e72;
   --color-sidebar-border: #e0e0e0;
   --color-sidebar-toggle: #eef0f5;
   --color-sidebar-toggle-hover: #e0e2ea;
   /* 按钮 */
-  --color-btn-secondary: #e8e8f0;
-  --color-btn-secondary-hover: #d8d8e8;
+  --color-btn-secondary: #e8edf0;
+  --color-btn-secondary-hover: #d8e2ea;
   /* 表格 */
   --color-table-header: #f0f2f5;
   /* 标签 */
-  --color-tag-bg: #e8e0ff;
+  --color-tag-bg: #e0f2fe;
   /* 提示 */
   --color-error-bg: #ffe8e8;
   --color-error-text: #c0392b;
   /* 高亮背景 */
   --color-highlight: #fafbff;
-  --color-highlight-blue: #f0f2ff;
+  --color-highlight-blue: #f0f9ff;
   /* 警告框 */
   --color-warn-bg: #fff9e6;
   --color-warn-border: #f0e0a0;
@@ -163,7 +163,7 @@ function navigate(path: string) {
 
 /* 深色主题 - One Dark Pro */
 [data-theme="dark"] {
-  --color-primary: #61afef;
+  --color-primary: #38bdf8;
   --color-bg: #282c34;
   --color-card: #2c313a;
   --color-text: #abb2bf;
@@ -180,7 +180,7 @@ function navigate(path: string) {
   --color-btn-secondary: #323842;
   --color-btn-secondary-hover: #3e4451;
   --color-table-header: #21252b;
-  --color-tag-bg: #2a2240;
+  --color-tag-bg: #1e3a5f;
   --color-error-bg: #3a2020;
   --color-error-text: #e06c75;
   --color-highlight: #2c313a;

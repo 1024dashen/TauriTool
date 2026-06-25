@@ -5,7 +5,7 @@ import { isTauri } from "@tauri-apps/api/core";
 /** 图标文字 */
 const iconText = ref("AB");
 /** 背景颜色 */
-const bgColor = ref("#6c5ce7");
+const bgColor = ref("#0ea5e9");
 /** 文字颜色 */
 const textColor = ref("#ffffff");
 /** 圆角大小 */
