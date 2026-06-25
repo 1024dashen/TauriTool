@@ -1,4 +1,5 @@
 import { ref } from "vue";
+import { setTheme } from "@tauri-apps/api/app";
 
 /** 主题类型 */
 type Theme = "light" | "dark";
@@ -12,9 +13,10 @@ function getInitialTheme(): Theme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-/** 应用主题到 DOM */
-function applyTheme(theme: Theme) {
+/** 应用主题到 DOM 并同步 Tauri 窗口主题 */
+async function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
+  await setTheme(theme);
 }
 
 /** 全局单例主题状态，所有组件共享 */
