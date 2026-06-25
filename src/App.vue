@@ -10,9 +10,7 @@ const menuGroups = ref([
   {
     label: "常用工具",
     icon: "⭐",
-    children: [
-      { label: "JSON 格式化", path: "/common/json-format" },
-    ],
+    children: [{ label: "JSON 格式化", path: "/common/json-format" }],
   },
   {
     label: "查询工具",
@@ -34,16 +32,12 @@ const menuGroups = ref([
   {
     label: "设备工具",
     icon: "🖥️",
-    children: [
-      { label: "设备信息", path: "/device/device-info" },
-    ],
+    children: [{ label: "设备信息", path: "/device/device-info" }],
   },
   {
     label: "其他工具",
     icon: "🔧",
-    children: [
-      { label: "短链接生成", path: "/other/short-link" },
-    ],
+    children: [{ label: "短链接生成", path: "/other/short-link" }],
   },
 ]);
 
@@ -101,7 +95,9 @@ function navigate(path: string) {
 
 <style>
 /* 全局重置 */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -121,7 +117,9 @@ function navigate(path: string) {
   --radius: 8px;
 }
 
-html, body, #app {
+html,
+body,
+#app {
   height: 100%;
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--color-text);
@@ -155,12 +153,21 @@ html, body, #app {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.logo-icon { font-size: 24px; }
-.logo-text { font-size: 18px; font-weight: 600; }
+.logo-icon {
+  font-size: 24px;
+}
+.logo-text {
+  font-size: 18px;
+  font-weight: 600;
+}
 
-.sidebar-nav { padding: 12px 0; }
+.sidebar-nav {
+  padding: 12px 0;
+}
 
-.menu-group { margin-bottom: 8px; }
+.menu-group {
+  margin-bottom: 8px;
+}
 
 .menu-group-title {
   display: flex;
@@ -174,9 +181,13 @@ html, body, #app {
   letter-spacing: 0.5px;
 }
 
-.menu-icon { font-size: 14px; }
+.menu-icon {
+  font-size: 14px;
+}
 
-.menu-list { list-style: none; }
+.menu-list {
+  list-style: none;
+}
 
 .menu-item {
   padding: 10px 16px 10px 40px;
