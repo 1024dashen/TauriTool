@@ -187,6 +187,19 @@ function onScaleInput() {
     drawEditor()
     updatePreview()
 }
+function scaleDown() {
+    imgScale.value = clamp(imgScale.value - 0.1, 0.1, 10)
+    onScaleInput()
+}
+function scaleUp() {
+    imgScale.value = clamp(imgScale.value + 0.1, 0.1, 10)
+    onScaleInput()
+}
+function applyPreset(val: number) {
+    radiusPercent.value = val
+    useAppleSquircle.value = false
+    updatePreview()
+}
 function onFitClick() {
     fitView()
     drawEditor()
@@ -787,13 +800,7 @@ async function downloadICNS() {
                 <!-- 缩放 -->
                 <div class="control-row full">
                     <label>缩放</label>
-                    <button
-                        class="btn btn-ghost btn-xs"
-                        @click="
-                            imgScale = clamp(imgScale - 0.1, 0.1, 10)
-                            onScaleInput()
-                        "
-                    >
+                    <button class="btn btn-ghost btn-xs" @click="scaleDown">
                         −
                     </button>
                     <input
@@ -806,13 +813,7 @@ async function downloadICNS() {
                         :style="rangeStyle(imgScale, 0.1, 5)"
                         @input="onScaleInput"
                     />
-                    <button
-                        class="btn btn-ghost btn-xs"
-                        @click="
-                            imgScale = clamp(imgScale + 0.1, 0.1, 10)
-                            onScaleInput()
-                        "
-                    >
+                    <button class="btn btn-ghost btn-xs" @click="scaleUp">
                         +
                     </button>
                     <span class="range-val"
@@ -923,11 +924,7 @@ async function downloadICNS() {
                                         !useAppleSquircle,
                                 },
                             ]"
-                            @click="
-                                radiusPercent = p.val
-                                useAppleSquircle = false
-                                updatePreview()
-                            "
+                            @click="applyPreset(p.val)"
                         >
                             {{ p.label }}
                         </button>
