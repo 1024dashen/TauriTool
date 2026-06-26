@@ -24,6 +24,9 @@ const cropH = ref(100);
 const radiusPercent = ref(0);
 const useAppleSquircle = ref(false);
 
+/* ==================== 内边距（透明边距百分比 0-40） ==================== */
+const paddingPercent = ref(0);
+
 /* ==================== UI 状态 ==================== */
 const statusMsg = ref("");
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -73,6 +76,34 @@ const presets = [
   { label: "中圆角 25%", val: 25 },
   { label: "大圆角 50%", val: 50 },
 ];
+
+/* ==================== 风格预设（圆角 + 内边距 + squircle 组合） ==================== */
+interface StylePreset {
+  label: string;
+  icon: string;
+  radius: number;
+  padding: number;
+  squircle: boolean;
+}
+const stylePresets: StylePreset[] = [
+  { label: "原始", icon: "◻️", radius: 0, padding: 0, squircle: false },
+  { label: "Apple 图标", icon: "🍎", radius: 22, padding: 0, squircle: true },
+  { label: "iOS 小图标", icon: "🍏", radius: 22, padding: 15, squircle: true },
+  { label: "macOS 通知", icon: "🔔", radius: 22, padding: 20, squircle: true },
+];
+function applyStylePreset(p: StylePreset) {
+  radiusPercent.value = p.radius;
+  paddingPercent.value = p.padding;
+  useAppleSquircle.value = p.squircle;
+  updatePreview();
+}
+function isActivePreset(p: StylePreset) {
+  return (
+    radiusPercent.value === p.radius &&
+    paddingPercent.value === p.padding &&
+    useAppleSquircle.value === p.squircle
+  );
+}
 
 /* ==================== 上传处理 ==================== */
 function triggerUpload() {
@@ -414,33 +445,40 @@ function drawRoundedRectPath(
   ctx.closePath();
 }
 
-/** 渲染最终效果图（裁剪 + 变换 + 圆角/squircle） */
+/** 渲染最终效果图（裁剪 + 变换 + 圆角/squircle + 透明内边距） */
 async function renderToCanvas(canvas: HTMLCanvasElement, size: number) {
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, size, size);
   if (!imgEl.value) return;
 
   const crop = getCropPixels();
-  const rPx = (radiusPercent.value / 100) * (size / 2);
+  // 内边距：每边留出的透明空间占输出尺寸的百分比
+  const pad = (paddingPercent.value / 100) * size;
+  const innerSize = size - pad * 2; // 去除内边距后的实际绘制区域尺寸
+  if (innerSize <= 0) return;
+
+  const rPx = (radiusPercent.value / 100) * (innerSize / 2);
 
   ctx.save();
-  // 形状裁剪
+  // 平移到内边距区域起点
+  ctx.translate(pad, pad);
+
+  // 形状裁剪（应用在内边距内的区域上）
   if (useAppleSquircle.value) {
-    // Apple squircle 圆角由 radiusPercent 直接控制（0% = 直角）
-    drawSquirclePath(ctx, size, rPx);
+    drawSquirclePath(ctx, innerSize, rPx);
   } else if (radiusPercent.value > 0) {
-    drawRoundedRectPath(ctx, size, rPx);
+    drawRoundedRectPath(ctx, innerSize, rPx);
   } else {
-    ctx.rect(0, 0, size, size);
+    ctx.rect(0, 0, innerSize, innerSize);
   }
   ctx.clip();
 
-  // 计算编辑器坐标 → 输出 Canvas 的映射
+  // 计算编辑器坐标 → 输出 Canvas 的映射（基于 innerSize）
   const S = editorSize;
   const sc = fitScale.value * imgScale.value;
   const cx = S / 2 + imgOffsetX.value - crop.x;
   const cy = S / 2 + imgOffsetY.value - crop.y;
-  const k = size / crop.side;
+  const k = innerSize / crop.side;
 
   ctx.translate(cx * k, cy * k);
   ctx.rotate((imgRotation.value * Math.PI) / 180);
@@ -712,11 +750,14 @@ async function downloadICNS() {
             <canvas ref="previewCanvas" class="preview-canvas" />
           </div>
           <div class="preview-meta">
-            <span>{{
-              useAppleSquircle
-                ? `Apple 圆角 ${radiusPercent}%`
-                : `圆角 ${radiusPercent}%`
-            }}</span>
+            <span
+              >{{
+                useAppleSquircle
+                  ? `Apple 圆角 ${radiusPercent}%`
+                  : `圆角 ${radiusPercent}%`
+              }}
+              · 内边距 {{ paddingPercent }}%</span
+            >
           </div>
         </div>
       </div>
@@ -811,9 +852,40 @@ async function downloadICNS() {
           <span class="range-val">{{ radiusPercent }}%</span>
         </div>
 
-        <!-- 圆角预设 + Apple -->
+        <!-- 内边距 -->
+        <div class="control-row full">
+          <label>内边距</label>
+          <input
+            type="range"
+            v-model.number="paddingPercent"
+            min="0"
+            max="40"
+            step="1"
+            class="range"
+            :style="rangeStyle(paddingPercent, 0, 40)"
+            @input="updatePreview"
+          />
+          <span class="range-val">{{ paddingPercent }}%</span>
+        </div>
+
+        <!-- 风格预设 -->
         <div class="control-row">
-          <label>预设</label>
+          <label>图标风格</label>
+          <div class="preset-group">
+            <button
+              v-for="p in stylePresets"
+              :key="p.label"
+              :class="['btn btn-chip', { active: isActivePreset(p) }]"
+              @click="applyStylePreset(p)"
+            >
+              {{ p.icon }} {{ p.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 圆角预设 -->
+        <div class="control-row">
+          <label>圆角预设</label>
           <div class="preset-group">
             <button
               v-for="p in presets"
@@ -829,16 +901,6 @@ async function downloadICNS() {
               "
             >
               {{ p.label }}
-            </button>
-            <button
-              :class="['btn btn-chip btn-apple', { active: useAppleSquircle }]"
-              @click="
-                useAppleSquircle = !useAppleSquircle;
-                if (useAppleSquircle && radiusPercent === 0) radiusPercent = 22;
-                updatePreview();
-              "
-            >
-              🍎 Apple 图标
             </button>
           </div>
         </div>
