@@ -62,12 +62,6 @@ const fitScale = computed(() => {
 });
 
 /* 裁剪框 CSS 定位 */
-const cropBoxStyle = computed(() => ({
-  left: `${cropX.value}%`,
-  top: `${cropY.value}%`,
-  width: `${cropW.value}%`,
-  height: `${cropH.value}%`,
-}));
 
 /* ==================== 圆角预设 ==================== */
 const presets = [
@@ -262,7 +256,7 @@ function drawEditor() {
   // 四角手柄
   const hs = 8;
   ctx.fillStyle = "#fff";
-  ctx.strokeStyle = "var(--color-primary, #0ea5e9)";
+  ctx.strokeStyle = "var(--color-primary, #2563eb)";
   ctx.lineWidth = 1.5;
   for (const [hx, hy] of [
     [cx, cy],
@@ -380,7 +374,7 @@ function attachWheelListener() {
     editorCanvas.value?.addEventListener("wheel", onWheel, { passive: false });
   });
 }
-watch(imgSrc, (newVal, oldVal) => {
+watch(imgSrc, (newVal, _oldVal) => {
   if (!newVal && editorCanvas.value) {
     editorCanvas.value.removeEventListener("wheel", onWheel);
   }

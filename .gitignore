@@ -30,4 +30,7 @@ node_modules/
 
 .env
 
+# Compiled JS output (TS project — no .js sources allowed)
+src/**/*.js
+
 src-tauri/target
