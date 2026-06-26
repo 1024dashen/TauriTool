@@ -11,7 +11,7 @@ const routes: RouteRecordRaw[] = [
     path: "/common/json-format",
     name: "JsonFormat",
     component: () => import("../views/common/JsonFormat.vue"),
-    meta: { title: "JSON 格式化", category: "常用工具" },
+    meta: { title: "JSON格式化", category: "常用工具" },
   },
   // 查询工具
   {

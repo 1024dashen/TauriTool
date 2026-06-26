@@ -12,7 +12,7 @@ const menuGroups = ref([
   {
     label: "常用工具",
     icon: "⭐",
-    children: [{ label: "JSON 格式化", path: "/common/json-format" }],
+    children: [{ label: "JSON格式化", path: "/common/json-format" }],
   },
   {
     label: "查询工具",
