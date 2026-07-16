@@ -183,18 +183,7 @@ function onRotationInput() {
   drawEditor();
   updatePreview();
 }
-function onScaleInput() {
-  drawEditor();
-  updatePreview();
-}
-function scaleDown() {
-  imgScale.value = clamp(imgScale.value - 0.1, 0.1, 10);
-  onScaleInput();
-}
-function scaleUp() {
-  imgScale.value = clamp(imgScale.value + 0.1, 0.1, 10);
-  onScaleInput();
-}
+
 function applyPreset(val: number) {
   radiusPercent.value = val;
   useAppleSquircle.value = false;
@@ -356,14 +345,6 @@ function editorMouseUp() {
   isDragging.value = false;
   window.removeEventListener("mousemove", editorMouseMove);
   window.removeEventListener("mouseup", editorMouseUp);
-  updatePreview();
-}
-
-/** 裁剪尺寸滑块（居中缩放） */
-function onCropSizeInput() {
-  cropX.value = (100 - cropW.value) / 2;
-  cropY.value = (100 - cropH.value) / 2;
-  drawEditor();
   updatePreview();
 }
 
