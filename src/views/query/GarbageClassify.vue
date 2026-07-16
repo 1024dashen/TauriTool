@@ -85,7 +85,7 @@ function getColor(type: string): string {
 .tool-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 .search-bar {
   display: flex;

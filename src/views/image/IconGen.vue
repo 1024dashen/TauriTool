@@ -183,7 +183,7 @@ async function downloadWeb() {
 .tool-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 .control-panel {
   display: flex;

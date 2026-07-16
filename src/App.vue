@@ -244,7 +244,7 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--color-sidebar-border);
 }
 
@@ -357,6 +357,6 @@ body,
 .content-body {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 14px;
 }
 </style>
