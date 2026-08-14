@@ -183,18 +183,7 @@ function onRotationInput() {
     drawEditor()
     updatePreview()
 }
-function onScaleInput() {
-    drawEditor()
-    updatePreview()
-}
-function scaleDown() {
-    imgScale.value = clamp(imgScale.value - 0.1, 0.1, 10)
-    onScaleInput()
-}
-function scaleUp() {
-    imgScale.value = clamp(imgScale.value + 0.1, 0.1, 10)
-    onScaleInput()
-}
+
 function applyPreset(val: number) {
     radiusPercent.value = val
     useAppleSquircle.value = false
@@ -359,14 +348,6 @@ function editorMouseUp() {
     isDragging.value = false
     window.removeEventListener('mousemove', editorMouseMove)
     window.removeEventListener('mouseup', editorMouseUp)
-    updatePreview()
-}
-
-/** 裁剪尺寸滑块（居中缩放） */
-function onCropSizeInput() {
-    cropX.value = (100 - cropW.value) / 2
-    cropY.value = (100 - cropH.value) / 2
-    drawEditor()
     updatePreview()
 }
 
@@ -802,7 +783,7 @@ async function downloadICNS() {
             <!-- 控制面板 -->
             <div class="control-panel">
                 <!-- 缩放 -->
-                <div class="control-row full">
+                <!-- <div class="control-row full">
                     <label>缩放</label>
                     <button class="btn btn-ghost btn-xs" @click="scaleDown">
                         −
@@ -823,7 +804,7 @@ async function downloadICNS() {
                     <span class="range-val"
                         >{{ (imgScale * 100).toFixed(0) }}%</span
                     >
-                </div>
+                </div> -->
 
                 <!-- 旋转 -->
                 <div class="control-row full">
@@ -848,20 +829,20 @@ async function downloadICNS() {
                 </div>
 
                 <!-- 裁剪尺寸 -->
-                <div class="control-row full">
-                    <label>裁剪</label>
-                    <input
-                        type="range"
-                        v-model.number="cropW"
-                        min="10"
-                        max="100"
-                        step="1"
-                        class="range"
-                        :style="rangeStyle(cropW, 10, 100)"
-                        @input="onCropSizeInput"
-                    />
-                    <span class="range-val">{{ cropW.toFixed(0) }}%</span>
-                </div>
+                <!-- <div class="control-row full">
+          <label>裁剪</label>
+          <input
+            type="range"
+            v-model.number="cropW"
+            min="10"
+            max="100"
+            step="1"
+            class="range"
+            :style="rangeStyle(cropW, 10, 100)"
+            @input="onCropSizeInput"
+          />
+          <span class="range-val">{{ cropW.toFixed(0) }}%</span>
+        </div> -->
 
                 <!-- 圆角 -->
                 <div class="control-row full">
@@ -992,7 +973,7 @@ async function downloadICNS() {
 .tool-page {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 12px;
 }
 
 /* ===== 上传区 ===== */
@@ -1026,7 +1007,7 @@ async function downloadICNS() {
 /* ===== 主布局 ===== */
 .main-row {
     display: flex;
-    gap: 20px;
+    gap: 12px;
     flex-wrap: wrap;
 }
 .section {

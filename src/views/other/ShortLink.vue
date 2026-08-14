@@ -56,7 +56,7 @@ async function copyShort() {
 .tool-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 .gen-card {
   background: var(--color-card);
