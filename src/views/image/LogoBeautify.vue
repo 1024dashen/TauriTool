@@ -44,14 +44,14 @@ const rotatedW = computed(() => {
     const rad = (imgRotation.value * Math.PI) / 180
     return Math.round(
         Math.abs(naturalW.value * Math.cos(rad)) +
-            Math.abs(naturalH.value * Math.sin(rad)),
+            Math.abs(naturalH.value * Math.sin(rad))
     )
 })
 const rotatedH = computed(() => {
     const rad = (imgRotation.value * Math.PI) / 180
     return Math.round(
         Math.abs(naturalW.value * Math.sin(rad)) +
-            Math.abs(naturalH.value * Math.cos(rad)),
+            Math.abs(naturalH.value * Math.cos(rad))
     )
 })
 
@@ -344,7 +344,7 @@ function editorMouseMove(e: MouseEvent) {
         // 角柄缩放裁剪（始终居中，等比缩放）
         const distFromCenter = Math.max(
             Math.abs(mx - S / 2),
-            Math.abs(my - S / 2),
+            Math.abs(my - S / 2)
         )
         const newPct = clamp(((distFromCenter * 2) / S) * 100, 10, 100)
         cropW.value = newPct
@@ -377,7 +377,7 @@ function detectCorner(
     bx: number,
     by: number,
     bw: number,
-    bh: number,
+    bh: number
 ) {
     if (Math.abs(mx - bx) < TH && Math.abs(my - by) < TH) return 'nw'
     if (Math.abs(mx - (bx + bw)) < TH && Math.abs(my - by) < TH) return 'ne'
@@ -417,9 +417,9 @@ function getCropPixels() {
     const side = Math.max(
         Math.min(
             Math.round((cropW.value / 100) * editorSize),
-            Math.round((cropH.value / 100) * editorSize),
+            Math.round((cropH.value / 100) * editorSize)
         ),
-        1,
+        1
     )
     const x = Math.round((cropX.value / 100) * editorSize)
     const y = Math.round((cropY.value / 100) * editorSize)
@@ -430,7 +430,7 @@ function getCropPixels() {
 function drawSquirclePath(
     ctx: CanvasRenderingContext2D,
     size: number,
-    cornerR: number,
+    cornerR: number
 ) {
     const s = size,
         r = Math.min(cornerR, s / 2),
@@ -452,7 +452,7 @@ function drawSquirclePath(
 function drawRoundedRectPath(
     ctx: CanvasRenderingContext2D,
     size: number,
-    r: number,
+    r: number
 ) {
     const s = size
     r = Math.min(r, s / 2)
@@ -535,13 +535,15 @@ async function downloadAll() {
             c.height = size
             await renderToCanvas(c, size)
             const blob = await new Promise<Blob>((r) =>
-                c.toBlob((b) => r(b!), 'image/png'),
+                c.toBlob((b) => r(b!), 'image/png')
             )
             blobs.push({ size, blob })
         }
         isTauri() ? await saveTauri(blobs) : await saveWeb(blobs)
     } catch (e) {
-        statusMsg.value = `导出失败: ${e instanceof Error ? e.message : String(e)}`
+        statusMsg.value = `导出失败: ${
+            e instanceof Error ? e.message : String(e)
+        }`
     } finally {
         downloading.value = false
     }
@@ -581,7 +583,7 @@ const customSize = ref(1024)
 function addSize() {
     if (customSize.value > 0 && !exportSizes.value.includes(customSize.value)) {
         exportSizes.value = [...exportSizes.value, customSize.value].sort(
-            (a, b) => a - b,
+            (a, b) => a - b
         )
     }
 }
@@ -645,7 +647,7 @@ function buildICNS(icons: { size: number; png: Uint8Array }[]): Uint8Array {
         if (!ostype) continue
         const entryLen = 8 + png.length
         entries.push(
-            concatBytes(encodeOSType(ostype), encodeUint32BE(entryLen), png),
+            concatBytes(encodeOSType(ostype), encodeUint32BE(entryLen), png)
         )
     }
     const body = concatBytes(...entries)
@@ -671,7 +673,7 @@ async function downloadICNS() {
             c.height = size
             await renderToCanvas(c, size)
             const blob = await new Promise<Blob>((r) =>
-                c.toBlob((b) => r(b!), 'image/png'),
+                c.toBlob((b) => r(b!), 'image/png')
             )
             icons.push({ size, png: new Uint8Array(await blob.arrayBuffer()) })
         }
@@ -700,7 +702,9 @@ async function downloadICNS() {
             statusMsg.value = '已下载 logo.icns'
         }
     } catch (e) {
-        statusMsg.value = `ICNS 导出失败: ${e instanceof Error ? e.message : String(e)}`
+        statusMsg.value = `ICNS 导出失败: ${
+            e instanceof Error ? e.message : String(e)
+        }`
     } finally {
         downloading.value = false
     }
@@ -808,7 +812,7 @@ async function downloadICNS() {
                         v-model.number="imgScale"
                         min="0.1"
                         max="5"
-                        step="0.05"
+                        step="0.01"
                         class="range"
                         :style="rangeStyle(imgScale, 0.1, 5)"
                         @input="onScaleInput"
@@ -999,9 +1003,7 @@ async function downloadICNS() {
     padding: 80px 40px;
     text-align: center;
     cursor: pointer;
-    transition:
-        border-color 0.2s,
-        background 0.2s;
+    transition: border-color 0.2s, background 0.2s;
 }
 .upload-area:hover {
     border-color: var(--color-primary);
@@ -1081,8 +1083,8 @@ async function downloadICNS() {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: repeating-conic-gradient(#e0e0e0 0% 25%, transparent 0% 50%)
-        50% / 16px 16px;
+    background: repeating-conic-gradient(#e0e0e0 0% 25%, transparent 0% 50%) 50% /
+        16px 16px;
     border-radius: 4px;
     min-height: 200px;
     padding: 16px;
@@ -1161,9 +1163,7 @@ async function downloadICNS() {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
     cursor: pointer;
     margin-top: -5px;
-    transition:
-        transform 0.15s,
-        box-shadow 0.15s;
+    transition: transform 0.15s, box-shadow 0.15s;
 }
 .range::-webkit-slider-thumb:hover {
     transform: scale(1.2);
@@ -1215,9 +1215,7 @@ async function downloadICNS() {
     font-size: 13px;
     cursor: pointer;
     font-weight: 500;
-    transition:
-        opacity 0.2s,
-        background 0.2s;
+    transition: opacity 0.2s, background 0.2s;
 }
 .btn:disabled {
     opacity: 0.6;
